@@ -1,0 +1,18 @@
+{
+  "model_name": "resnet18",
+  "initial_conv": { "filters": 64, "kernel_size": [7,7], "strides": [2,2] },
+  "initial_pool": {},
+  "feature_extraction": {
+    "type": "resnet",
+    "params": { "block_fn": "basic", "repetitions": [2, 2, 2, 2]}
+  },
+  "final_pool": { "type":  "max", "params": {} },
+  "classifier_activation": "softmax",
+  "optimizer": { "class_name": "Adam", "config": { "learning_rate": 0.005, "epsilon": 0.002 } },
+  "loss": { "class_name": "CategoricalCrossentropy", "config": { "name": "categorical_crossentropy" } },
+  "metrics": [
+    {"class_name": "CategoricalAccuracy", "config": { "name": "categorical_accuracy" }},
+    {"class_name": "CategoricalCrossentropy", "config": { "name": "categorical_crossentropy" }},
+    {"class_name": "F1ScoreMetric", "config": {"name": "f1score", "dtype": "float32"}}
+  ]
+}

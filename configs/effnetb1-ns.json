@@ -1,0 +1,17 @@
+{
+  "model_name": "effnetb1ns",
+  "feature_extraction": {
+    "type": "efficient",
+    "params": { "weights": "noisy-student", "drop_connect_rate": 0.4 }
+  },
+  "final_pool": { "type":  "avg", "params": {} },
+  "dropout": 0.3,
+  "classifier_activation": "softmax",
+  "optimizer": { "class_name": "Adam", "config": { "learning_rate": 0.001, "epsilon": 0.002 } },
+  "loss": { "class_name": "CategoricalCrossentropy", "config": { "name": "categorical_crossentropy" } },
+  "metrics": [
+    {"class_name": "CategoricalAccuracy", "config": { "name": "categorical_accuracy" }},
+    {"class_name": "CategoricalCrossentropy", "config": { "name": "categorical_crossentropy" }},
+    {"class_name": "F1ScoreMetric", "config": {"name": "f1score", "dtype": "float32"}}
+  ]
+}

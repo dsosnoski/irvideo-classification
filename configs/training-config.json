@@ -1,0 +1,71 @@
+{
+  "batch_size": 512,
+  "input_dims": [32, 32, 1],
+  "epochs_count": 500,
+  "validate_frame_counts": {
+    "bird": 22376,
+    "cat": 28162,
+    "hedgehog": 42518,
+    "human": 7396,
+    "leporidae": 17305,
+    "mustelid": 10685,
+    "possum": 44951,
+    "rodent": 82310,
+    "unclassified": 100603,
+    "vehicle": 2382,
+    "wallaby": 15956
+  },
+  "max_frame_load_count": 500000,
+  "replace_fraction_per_epoch": 0.2,
+  "noise_scale": 8,
+  "rotation_limit": 27,
+  "use_flip": true,
+  "data_path": "/data/dennis/irvideo/new-data",
+  "base_save_path": "/data/dennis/irvideo/models",
+  "callbacks": [
+    {
+      "name": "checkpoint_callback",
+      "filepath": "model-{epoch:02d}-acc{val_categorical_accuracy:.4f}-f1{val_f1score:.4f}",
+      "monitor": "val_categorical_accuracy",
+      "mode": "max",
+      "save_best_only": true,
+      "save_weights_only": false
+    },
+    {
+      "name": "checkpoint_callback",
+      "filepath": "model-{epoch:02d}-f1{val_f1score:.4f}-acc{val_categorical_accuracy:.4f}",
+      "monitor": "val_f1score",
+      "mode": "max",
+      "save_best_only": true,
+      "save_weights_only": false
+    },
+    {
+      "name": "lr_callback",
+      "monitor": "val_categorical_accuracy",
+      "mode": "max",
+      "factor": 0.65,
+      "patience": 15,
+      "min_lr": 0.00002,
+      "verbose": 1
+    },
+    {
+      "name": "stopping_callback",
+      "monitor": "val_categorical_accuracy",
+      "mode": "max",
+      "patience": 50
+    }
+  ],
+  "plots": [
+    {
+      "title": "Loss by epoch",
+      "values": ["loss"],
+      "y-label": "Loss",
+      "caption-loc": "upper right"
+    },
+    {
+      "title": "Accuracy by epoch",
+      "values": ["f1score", "categorical_accuracy"],
+      "y-label": "Accuracy",
+      "caption-loc": "upper left" }
+  ]
+}
