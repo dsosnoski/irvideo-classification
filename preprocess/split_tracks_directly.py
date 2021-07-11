@@ -1,18 +1,18 @@
 import os
+import pickle
+import sys
 import traceback
 
 import h5py
 import numpy as np
-import pickle
-import sys
 from dateutil.parser import parse as parse_date
 
 # import matplotlib
 # import matplotlib.pyplot as plt
 # matplotlib.use('TkAgg')
-from preprocess.image_sizing import IMAGE_DIMENSION, IMAGE_RESIZE_RATIOS
+from preprocess.image_sizing import IMAGE_DIMENSION
 from support.data_model import Track
-from support.track_utils import convert_frames, extract_hdf5_frames, extract_hdf5_crops, prune_frames, stepped_resizer
+from support.track_utils import convert_frames, extract_hdf5_frames, extract_hdf5_crops, prune_frames, smooth_resizer
 
 # DATASET_PATH = '/data/cacophony/ai-dataset/dataset.hdf5'
 # OUTPUT_DIRECTORY = '/data/dennis/irvideo/new-data'
@@ -72,7 +72,7 @@ def main():
     cutoff_time = parse_date('2021-03-29T08:07:54.240643+13:00')
     ftest_data, ftrain_data, fnewer_data = open_files(output_directory, DATA_FILE_NAMES)
     ftest_meta, ftrain_meta, fnewer_meta = open_files(output_directory, METADATA_NAMES)
-    ratiofn = stepped_resizer(IMAGE_RESIZE_RATIOS)
+    ratiofn = smooth_resizer(IMAGE_DIMENSION)
     for clip_key in clips_hdf5:
         clip_hdf5 = clips_hdf5[clip_key]
         start_time = parse_date(clip_hdf5.attrs['start_time'])
@@ -88,7 +88,8 @@ def main():
                 frames = extract_hdf5_frames(track_hdf5['original'])
                 crops = extract_hdf5_crops(track_hdf5['cropped'])
                 masses = track_hdf5.attrs['mass_history']
-                _, frames, bounds, masses, pixels = prune_frames(crops, frames, hdf5_bounds, masses, clip_key, track_key)
+                keepfn = lambda a, b: b > (2 + a*.005)
+                _, frames, bounds, masses, pixels = prune_frames(crops, frames, hdf5_bounds, masses, clip_key, track_key, keepfn)
                 if len(bounds) > 0:
                     aframes, obounds, ratios = convert_frames(frames, bgframe, bounds, IMAGE_DIMENSION, ratiofn)
                     if clip_key in test_clips:

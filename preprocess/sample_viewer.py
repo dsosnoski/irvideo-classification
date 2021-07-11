@@ -1,25 +1,25 @@
 
+import sys
+import traceback
+
 import cv2
 import h5py
 import matplotlib
 import matplotlib.cm
 import numpy as np
-import sys
-import traceback
-
-from PySide2.QtCore import Slot, Qt, QByteArray
+from PySide2.QtCore import Slot
 from PySide2.QtGui import QPixmap, QImage, qRgb
 from PySide2.QtWidgets import QApplication, QComboBox, QHBoxLayout, QMainWindow, QPushButton, QVBoxLayout, QWidget, \
     QLabel, QStatusBar
 
-from preprocess.image_sizing import IMAGE_RESIZE_RATIOS, IMAGE_DIMENSION
+from preprocess.image_sizing import IMAGE_DIMENSION
 from support.track_utils import extract_hdf5_frames, convert_frames, clip_and_scale, extract_hdf5_crops, FRAME_DIMS, \
-    normalize, prune_frames, stepped_resizer
+    normalize, prune_frames, smooth_resizer
 
 matplotlib.use('Qt5Agg')
 
 
-DATASET_PATH = '/home/dennis/projects/irvideos/dataset-partial.hdf5'
+DATASET_PATH = '/home/dennis/projects/irvideos/working-data/problem-clips.hdf5'
 CLIP_DIMS = [IMAGE_DIMENSION, IMAGE_DIMENSION]
 
 
@@ -38,7 +38,7 @@ class ViewTrack:
         self.raw_crops = crops
         masses = track_hdf5.attrs['mass_history']
         ocrops, oframes, obounds, omasses, _ = prune_frames(crops, frames, bounds, masses, clip_id, track_id)
-        ratiofn = stepped_resizer(IMAGE_RESIZE_RATIOS)
+        ratiofn = smooth_resizer(IMAGE_DIMENSION)
         aframes, obounds, ratios = convert_frames(frames, background, bounds, IMAGE_DIMENSION, ratiofn)
         self.adjust_crops = ocrops
         self.adjust_frames = aframes
@@ -49,6 +49,7 @@ class ViewTrack:
 
     def current_data(self):
         index = self.current_index
+        print(f'returning acrop with shape {self.adjust_crops[index].shape}')
         return self.camera_frames[index], self.difference_frames[index], self.raw_crops[index], self.adjust_crops[index], self.adjust_frames[index], self.frame_bounds[index], self.adjust_masses[index]
 
     def next(self):

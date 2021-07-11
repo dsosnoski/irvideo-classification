@@ -119,26 +119,7 @@ def clip_and_scale(frame):
         return frame
 
 
-def sizing(maxdim, scale_base, max_upscale):
-    if maxdim > scale_base:
-        resize_ratio = .5 if maxdim > scale_base * 1.65 \
-            else .6 if maxdim > scale_base * 1.55 \
-            else .675 if maxdim > scale_base * 1.4\
-            else .75
-        newmax = int(scale_base / resize_ratio)
-    elif maxdim < scale_base / 2:
-        resize_ratio = min(int(scale_base / maxdim), max_upscale)
-        newmax = int(scale_base / resize_ratio)
-    elif maxdim < scale_base / 1.5:
-        resize_ratio = 1.5
-        newmax = int(scale_base / resize_ratio)
-    else:
-        resize_ratio = 1
-        newmax = int(maxdim / resize_ratio)
-    return resize_ratio, newmax
-
-
-def prune_frames(icrops, iframes, ibounds, imasses, clip_key, track_key, difference_to_keep=24):
+def prune_frames(icrops, iframes, ibounds, imasses, clip_key, track_key, keepfn=lambda a, b: True):
     """
     Drop useless frames, based on the cropped frame data. If a crop is either all zero, or the same bounds as the prior
     crop and with no significant change in pixel values, it's dropped from the list (along with the matching frame,
@@ -151,7 +132,7 @@ def prune_frames(icrops, iframes, ibounds, imasses, clip_key, track_key, differe
     :param imasses: input masses
     :param clip_key: clip identifier
     :param track_key: track identifier
-    :param difference_to_keep: minimum change in crop pixel values to retain frame
+    :param keepfn: function (sum of pixels in frame, total difference in frames) to decide whether frame is kept
     :return: (crops, adjusts, bounds, masses, pixels)
     """
     ocrops = []
@@ -168,7 +149,7 @@ def prune_frames(icrops, iframes, ibounds, imasses, clip_key, track_key, differe
             zero_count += 1
         else:
             bound = np.array(bound)
-            if last_crop is not None and np.array_equal(bound, last_bound) and np.sum(np.abs(crop - last_crop)) < difference_to_keep:
+            if last_crop is not None and np.array_equal(bound, last_bound) and not keepfn(np.sum(crop), np.sum(np.abs(crop - last_crop))):
                 static_count += 1
             else:
                 last_crop = crop
@@ -179,7 +160,7 @@ def prune_frames(icrops, iframes, ibounds, imasses, clip_key, track_key, differe
                 omasses.append(mass)
                 opixels.append((crop > 0).sum())
     if zero_count > 0 or static_count > 0:
-        print(f'{clip_key}-{track_key} dropped {zero_count} zero crops and {static_count} static crops')
+        print(f'{clip_key}-{track_key} dropped {zero_count} zero crops and {static_count} static crops leaving {len(ocrops)} frames')
     return ocrops, oframes, np.array(obounds), np.array(omasses), np.array(opixels)
 
 
