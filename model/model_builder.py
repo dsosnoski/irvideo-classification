@@ -144,7 +144,10 @@ class ModelBuilder(object):
             interx = tf.keras.layers.Concatenate()([interx1, interx2])
             certainty = tf.keras.layers.Dense(1, kernel_initializer='he_normal', activation='sigmoid', name='certainty')(interx)
             model = ModelWithCertainty(inputs=[input], outputs=[class_out, certainty])
-            model.compile(optimizer=optimizer, loss=[loss, tf.keras.losses.BinaryCrossentropy()], loss_weights=[1, certainty_loss_weight], metrics=[metrics, tf.keras.metrics.BinaryCrossentropy()])
+            loss = [loss, tf.keras.losses.BinaryCrossentropy()]
+            weights = [1-certainty_loss_weight, certainty_loss_weight]
+            metrics = [metrics, tf.keras.metrics.BinaryCrossentropy()]
+            model.compile(optimizer=optimizer, loss=loss, loss_weights=weights, metrics=metrics)
         else:
             model = tf.keras.models.Model(inputs=[input], outputs=class_out)
             model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
