@@ -21,7 +21,7 @@
   "noise_scale": 8,
   "rotation_limit": 27,
   "use_flip": true,
-  "data_path": "/data/dennis/irvideo/new-data",
+  "data_path": "/data/dennis/irvideo/redata",
   "base_save_path": "/data/dennis/irvideo/models",
   "callbacks": [
     {
