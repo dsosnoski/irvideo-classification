@@ -12,7 +12,7 @@
   "loss": { "class_name": "BinaryCrossentropy", "config": { "name": "crossentropy" } },
   "metrics": [
     {"class_name": "CategoricalAccuracy", "config": { "name": "categorical_accuracy" }},
-    {"class_name": "BinaryCrossentropy", "config": { "name": "crossentropy" }},
+    {"class_name": "BinaryCrossentropy", "config": { "name": "binary_crossentropy" }},
     {"class_name": "F1ScoreMetric", "config": {"name": "f1score", "dtype": "float32"}}
   ]
 }
