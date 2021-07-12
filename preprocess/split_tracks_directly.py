@@ -136,7 +136,6 @@ def main():
                     if track_count % 1000 == 0:
                         print(f'processed {track_count} tracks with {frame_count} frames, {train_count} training tracks, {test_count} test tracks, and {newer_count} newer tracks; {discard_count} tracks discarded')
                         ftest_data, ftrain_data, fnewer_data = save_and_reopen_files([ftest_data, ftrain_data, fnewer_data])
-                        ftest_meta, ftrain_meta, fnewer_meta = save_and_reopen_files([ftest_meta, ftrain_meta, fnewer_meta])
                 else:
                     discard_count += 1
                     print(f'discarding zero-length {clip_key}-{track_key} in test set {clip_key in test_clips}')
