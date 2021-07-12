@@ -41,6 +41,21 @@ def save_and_reopen_files(files):
     return files
 
 
+def count_tracks(clip_hdf5, track_keys, track_counts):
+    for track_key in track_keys:
+        track_hdf5 = clip_hdf5[track_key]
+        tag = track_hdf5.attrs['tag']
+        if tag not in track_counts:
+            track_counts[tag] = 0
+        track_counts[tag]+= 1
+
+
+def print_track_counts(name, counts):
+    print(f'\n{name} track counts:')
+    for tag in counts:
+        print(f'{tag}: {counts[tag]}')
+
+
 def main():
     argv = sys.argv
     dataset_path = argv[1]
@@ -64,6 +79,9 @@ def main():
     test_count = 0
     train_count = 0
     newer_count = 0
+    test_track_counts = {}
+    train_track_counts = {}
+    newer_track_counts = {}
     cutoff_time = parse_date('2021-03-29T08:07:54.240643+13:00')
     for clip_key in clips_hdf5:
         clip_hdf5 = clips_hdf5[clip_key]
@@ -72,12 +90,18 @@ def main():
         if clip_key in test_clips:
             test_clips[clip_key] = True
             test_count += len(tkeys)
+            count_tracks(clip_hdf5, tkeys, test_track_counts)
         elif start_time < cutoff_time:
             train_count += len(tkeys)
+            count_tracks(clip_hdf5, tkeys, train_track_counts)
         else:
             newer_count += len(tkeys)
+            count_tracks(clip_hdf5, tkeys, newer_track_counts)
         track_count += len(tkeys)
     print(f'Found {track_count} tracks total: {train_count} training tracks, {test_count} test tracks, and {newer_count} newer tracks')
+    print_track_counts('test', test_track_counts)
+    print_track_counts('train', train_track_counts)
+    print_track_counts('newer', newer_track_counts)
     missing_clips = [k for k,v in test_clips.items() if not v]
     for clip_key in missing_clips:
         print(f'missing specified test clip {clip_key}')
