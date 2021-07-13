@@ -41,7 +41,7 @@ def kfold_split(data_directory, save_directory, fold_count):
     tag_tracks = tracks_by_tag(tracks)
     for tag in tag_tracks:
         print(f'{tag} loaded {len(tag_tracks[tag])} tracks')
-    fold_tag_tracks = [{}] * fold_count
+    fold_tag_tracks = [{} for _ in range(fold_count)]
     for tag in tag_tracks.keys():
         if tag in CLASSES:
             tracks = tag_tracks[tag]
@@ -52,8 +52,8 @@ def kfold_split(data_directory, save_directory, fold_count):
                 fold = frame_counts.argmin()
                 fold_tracks[fold].append(track_info)
                 frame_counts[fold] += track_info.frame_count
-            for d, l in zip(fold_tag_tracks, fold_tracks):
-                d[tag] = l
+            for i in range(fold_count):
+                fold_tag_tracks[i][tag] = fold_tracks[i]
     with open(f'{save_directory}/splits.pk', 'wb') as f:
         for fold in fold_tag_tracks:
             pickle.dump(fold, f)
