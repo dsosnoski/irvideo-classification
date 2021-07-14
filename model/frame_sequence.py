@@ -32,7 +32,7 @@ class TagStore:
         #start_time = time.perf_counter()
         with open(self.data_path, 'rb') as f:
             for track in tracks:
-                assert track.data is None
+                assert track.data is None, f'track data already set for track {track.track_key} with tag {track.tag}'
                 assert track.offset == f.seek(track.offset)
                 track.data = np.load(f)
                 assert track.frame_count == len(track.data)
@@ -121,6 +121,10 @@ class TagStore:
     def reset(self):
         self._create_noise()
         self.epoch_number += 1
+
+    def clear(self):
+        for track in self.loaded_tracks:
+            track.data = None
 
 
 class TrainingTagStore(TagStore):
@@ -235,6 +239,11 @@ class FrameSequence(Sequence):
             return batch_x, batch_y
         else:
             return batch_x
+
+    def clear(self):
+        for store in self.tag_stores:
+            store.clear()
+
 
     @staticmethod
     def build_training_sequence(tag_tracks, data_path, batch_size, tag_hots, input_shape, frame_counts,
