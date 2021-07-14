@@ -21,8 +21,8 @@ def all_frame_counts(tag_tracks):
 def main():
     os.environ['CUDA_VISIBLE_DEVICES'] = ''
     argv = sys.argv
-    data_directory = argv[1]
-    tracks = load_raw_tracks(f'{data_directory}/test_infos.pk')
+    infos_path = argv[1]
+    tracks = load_raw_tracks(infos_path)
     tag_tracks = tracks_by_tag(tracks)
 
     print(f'\nTesting with {all_frame_counts(tag_tracks)} frames:\n')
@@ -38,7 +38,8 @@ def main():
         else:
             print(f'skipping {len(tag_tracks[tag])} tracks with unsupported tag {tag}')
 
-    load_tracks(test_tracks, f'{data_directory}/test_frames.npy')
+    frames_path = infos_path.replace('infos.pk', 'frames.npy')
+    load_tracks(test_tracks, frames_path)
     print(f'loaded {len(test_tracks)} tracks with {np.sum([t.frame_count for t in test_tracks])} frames')
     for weights_path in argv[2:]:
         if weights_path.endswith('.index'):
