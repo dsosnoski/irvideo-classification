@@ -57,8 +57,9 @@ def main():
 
     base_save_path = training_config['base_save_path']
     name = model_config['model_name']
+    model_name_suffix = training_config.get('model_name_suffix', '')
     date_string = datetime.datetime.now().strftime('%Y%m%d')
-    save_directory = f'{base_save_path}/{name}-{date_string}'
+    save_directory = f'{base_save_path}/{name}{model_name_suffix}-{date_string}'
     if not os.path.exists(save_directory):
         os.mkdir(save_directory)
     print(f'saving to {save_directory}')
