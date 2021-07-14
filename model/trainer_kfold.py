@@ -85,8 +85,9 @@ def main():
 
     base_save_path = training_config['base_save_path']
     name = model_config['model_name']
+    model_name_suffix = training_config.get('model_name_suffix', '')
     date_string = datetime.datetime.now().strftime('%Y%m%d')
-    save_directory = f'{base_save_path}/{name}-{date_string}'
+    save_directory = f'{base_save_path}/{name}{model_name_suffix}-{date_string}'
     if not os.path.exists(save_directory):
         os.mkdir(save_directory)
     print(f'saving to {save_directory}')
@@ -134,6 +135,8 @@ def main():
         history = model.fit(train_sequence, validation_data=validate_sequence, epochs=epochs_count, callbacks=callbacks)
         model.save(f'{pass_directory}/model-finished.sav')
         draw_figures(history, training_config['plots'], pass_directory)
+        train_sequence.clear()
+        validate_sequence.clear()
         tf.keras.backend.clear_session()
 
 
