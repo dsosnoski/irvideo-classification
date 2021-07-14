@@ -2,7 +2,7 @@
   "batch_size": 512,
   "input_dims": [32, 32, 1],
   "fold_count": 4,
-  "epochs_count": 200,
+  "epochs_count": 160,
   "max_frame_load_count": 500000,
   "replace_fraction_per_epoch": 0.2,
   "noise_scale": 8,
@@ -10,6 +10,7 @@
   "use_flip": true,
   "data_path": "/data/dennis/irvideo/data",
   "base_save_path": "/data/dennis/irvideo/models",
+  "model_name_suffix": "kfold",
   "callbacks": [
     {
       "name": "checkpoint_callback",
@@ -32,7 +33,7 @@
       "monitor": "val_categorical_accuracy",
       "mode": "max",
       "factor": 0.65,
-      "patience": 10,
+      "patience": 8,
       "min_lr": 0.00002,
       "verbose": 1
     },
@@ -40,7 +41,7 @@
       "name": "stopping_callback",
       "monitor": "val_categorical_accuracy",
       "mode": "max",
-      "patience": 35
+      "patience": 28
     }
   ],
   "plots": [
