@@ -99,7 +99,6 @@ def _shortcut(input, residual):
 def _residual_block(block_function, filters, repetitions, is_first_layer=False):
     """Builds a residual block with repeating bottleneck blocks.
     """
-    print(f'building residual block with {filters} filters')
     def f(input):
         for i in range(repetitions):
             init_strides = (1, 1)
@@ -116,7 +115,6 @@ def basic_block(filters, init_strides=(1, 1), is_first_block_of_first_layer=Fals
     """Basic 3 X 3 convolution blocks for use on resnets with layers <= 34.
     Follows improved proposed scheme in http://arxiv.org/pdf/1603.05027v2.pdf
     """
-    print(f'building basic block with {filters} filters')
     def f(input):
 
         if is_first_block_of_first_layer:
@@ -143,8 +141,6 @@ def bottleneck(filters, init_strides=(1, 1), is_first_block_of_first_layer=False
     Returns:
         A final conv layer of filters * 4
     """
-    print(f'building bottleneck with 4x{filters} filters')
-
     def f(input):
 
         if is_first_block_of_first_layer:
