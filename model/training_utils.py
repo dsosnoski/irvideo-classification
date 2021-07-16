@@ -101,16 +101,17 @@ def compute_scores(tp, fp, fn):
 
 def build_callback(config, save_directory):
     callback_name = config['name']
-    del config['name']
+    config_copy = config.copy()
+    del config_copy['name']
     if callback_name == 'checkpoint_callback':
-        checkpoint_filename = config['filepath']
-        config['filepath'] = save_directory + '/' + checkpoint_filename
-        print(f'saving checkpoints to {config["filepath"]}')
-        return tf.keras.callbacks.ModelCheckpoint(**config)
+        checkpoint_filename = config_copy['filepath']
+        config_copy['filepath'] = save_directory + '/' + checkpoint_filename
+        print(f'saving checkpoints to {config_copy["filepath"]}')
+        return tf.keras.callbacks.ModelCheckpoint(**config_copy)
     elif callback_name == 'lr_callback':
-        return tf.keras.callbacks.ReduceLROnPlateau(**config)
+        return tf.keras.callbacks.ReduceLROnPlateau(**config_copy)
     elif callback_name == 'stopping_callback':
-        return tf.keras.callbacks.EarlyStopping(**config)
+        return tf.keras.callbacks.EarlyStopping(**config_copy)
     else:
         raise Exception(f'Unknown callback type {callback_name}')
 

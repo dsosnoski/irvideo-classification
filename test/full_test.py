@@ -6,7 +6,7 @@ import numpy as np
 
 from model.training_utils import load_raw_tracks, tracks_by_tag
 from support.data_model import CLASSES, TAG_CLASS_MAP
-from test.test_utils import load_tracks
+from test.test_utils import load_tracks, convert_remote_path, flatten_tag_tracks
 from test.model_test import ModelTest
 
 
@@ -30,24 +30,22 @@ def main():
         print(f'{key:12}  {frame_count(tag_tracks[key]):>7}')
     print()
 
-    test_tracks = []
-    for tag in tag_tracks.keys():
-        if tag in TAG_CLASS_MAP:
-            tracks = tag_tracks[tag]
-            test_tracks = test_tracks + tracks
-        else:
-            print(f'skipping {len(tag_tracks[tag])} tracks with unsupported tag {tag}')
-
+    test_tracks = flatten_tag_tracks(tag_tracks)
     frames_path = infos_path.replace('infos.pk', 'frames.npy')
     load_tracks(test_tracks, frames_path)
     print(f'loaded {len(test_tracks)} tracks with {np.sum([t.frame_count for t in test_tracks])} frames')
-    for weights_path in argv[2:]:
-        if weights_path.endswith('.index'):
-            weights_path = weights_path[:-6]
-        if weights_path.startswith('fish://dennis@125.236.230.94:2040') or weights_path.startswith('sftp://dennis@125.236.230.94:2040'):
-            weights_path = weights_path[33:]
+    save_predicts = argv[2] == '--save-predicts'
+    arg_offset = 3 if save_predicts else 2
+    for weights_path in argv[arg_offset:]:
+        weights_path = convert_remote_path(weights_path)
         model_test = ModelTest(weights_path)
-        model_test.test(test_tracks, True)
+        track_predicts, track_certainties = model_test.test(test_tracks, True)
+        if save_predicts:
+            with open(f'{weights_path}-predicts.npy', 'wb') as f:
+                np.save(f, track_predicts)
+            if track_certainties is not None:
+                with open(f'{weights_path}-certainties.npy', 'wb') as f:
+                    np.save(f, track_certainties)
 
 
 if __name__ == '__main__':

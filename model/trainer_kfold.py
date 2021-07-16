@@ -36,7 +36,7 @@ def split_training_validation(tag_tracks, validate_frame_counts):
     return train_tracks, validate_tracks
 
 
-def kfold_split(data_directory, save_directory, fold_count):
+def kfold_split(data_directory, fold_count):
     tracks = load_raw_tracks(f'{data_directory}/train_infos.pk')
     tag_tracks = tracks_by_tag(tracks)
     for tag in tag_tracks:
@@ -54,9 +54,6 @@ def kfold_split(data_directory, save_directory, fold_count):
                 frame_counts[fold] += track_info.frame_count
             for i in range(fold_count):
                 fold_tag_tracks[i][tag] = fold_tracks[i]
-    with open(f'{save_directory}/splits.pk', 'wb') as f:
-        for fold in fold_tag_tracks:
-            pickle.dump(fold, f)
     return fold_tag_tracks
 
 
@@ -95,7 +92,17 @@ def main():
 
     data_directory = training_config['data_path']
     fold_count = training_config['fold_count']
-    kfold_tag_tracks = kfold_split(data_directory, save_directory, fold_count)
+    split_path = f'{save_directory}/splits.pk'
+    if os.path.exists(save_directory):
+        with open(split_path, 'rb') as f:
+            kfold_tag_tracks = []
+            for _ in range(fold_count):
+                kfold_tag_tracks.append(pickle.load(f))
+    else:
+        kfold_tag_tracks = kfold_split(data_directory, fold_count)
+        with open(split_path, 'wb') as f:
+            for fold in kfold_tag_tracks:
+                pickle.dump(fold, f)
     data_path = f'{data_directory}/train_frames.npy'
     batch_size = training_config['batch_size']
     max_frame_load_count = training_config['max_frame_load_count']
@@ -118,26 +125,26 @@ def main():
     with open(f'{save_directory}/model.json', 'w') as f:
         f.write(model_json)
     for fold_num in range(fold_count):
-        print(f'\nTraining fold {fold_num}')
         pass_directory = f'{save_directory}/fold{fold_num}'
         if not os.path.exists(pass_directory):
             os.mkdir(pass_directory)
-        training_tracks = merge_tag_tracks([kfold_tag_tracks[i] for i in range(fold_count) if i != fold_num])
-        validation_tracks = kfold_tag_tracks[fold_num]
-        print_track_information(training_tracks, validation_tracks)
-        train_sequence = FrameSequence.build_training_sequence(training_tracks, data_path, batch_size, tag_hots, input_dims,
-                                                               frame_counts, replace_fraction_per_epoch, noise_scale,
-                                                               rotation_limit, use_flip)
-        validate_sequence = FrameSequence.build_validation_sequence(validation_tracks, data_path, batch_size, tag_hots, input_dims)
-        certainty_loss_weight = training_config.get('certainty_loss_weight')
-        model = ModelBuilder.build_model(input_dims, len(CLASSES), certainty_loss_weight, **model_config)
-        callbacks = [build_callback(cfg, pass_directory) for cfg in training_config['callbacks']]
-        history = model.fit(train_sequence, validation_data=validate_sequence, epochs=epochs_count, callbacks=callbacks)
-        model.save(f'{pass_directory}/model-finished.sav')
-        draw_figures(history, training_config['plots'], pass_directory)
-        train_sequence.clear()
-        validate_sequence.clear()
-        tf.keras.backend.clear_session()
+            print(f'\nTraining fold {fold_num}')
+            training_tracks = merge_tag_tracks([kfold_tag_tracks[i] for i in range(fold_count) if i != fold_num])
+            validation_tracks = kfold_tag_tracks[fold_num]
+            print_track_information(training_tracks, validation_tracks)
+            train_sequence = FrameSequence.build_training_sequence(training_tracks, data_path, batch_size, tag_hots, input_dims,
+                                                                   frame_counts, replace_fraction_per_epoch, noise_scale,
+                                                                   rotation_limit, use_flip)
+            validate_sequence = FrameSequence.build_validation_sequence(validation_tracks, data_path, batch_size, tag_hots, input_dims)
+            certainty_loss_weight = training_config.get('certainty_loss_weight')
+            model = ModelBuilder.build_model(input_dims, len(CLASSES), certainty_loss_weight, **model_config)
+            callbacks = [build_callback(cfg, pass_directory) for cfg in training_config['callbacks']]
+            history = model.fit(train_sequence, validation_data=validate_sequence, epochs=epochs_count, callbacks=callbacks)
+            model.save(f'{pass_directory}/model-finished.sav')
+            draw_figures(history, training_config['plots'], pass_directory)
+            train_sequence.clear()
+            validate_sequence.clear()
+            tf.keras.backend.clear_session()
 
 
 if __name__ == '__main__':

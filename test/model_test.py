@@ -10,24 +10,7 @@ from model.f1_metric import F1ScoreMetric
 from model.model_certainty import ModelWithCertainty
 from support.data_model import CLASSES, TAG_CLASS_MAP
 from test.prediction_variations import get_general_predictions, get_predictions_with_certainty
-from test.test_utils import prep_track
-
-
-def load_model(weights_path):
-    directory_path, _ = os.path.split(weights_path)
-    if os.path.isdir(weights_path):
-        # need compile=False to avoid error for custom object without serialize/deserialize
-        model = tf.keras.models.load_model(weights_path, custom_objects={'f1score': F1ScoreMetric}, compile=False)
-        model.compile()
-        print(f'Loaded and compiled model from {weights_path}')
-    else:
-        model_path = f'{directory_path}/model.json'
-        with open(model_path, 'r') as f:
-            model_config = f.read()
-        model = tf.keras.models.model_from_json(model_config, custom_objects={'ModelWithCertainty': ModelWithCertainty})
-        model.compile()
-        model.load_weights(weights_path)
-    return model
+from test.test_utils import prep_track, load_model
 
 
 class ModelTest:
@@ -38,7 +21,6 @@ class ModelTest:
         self.sample_dims = tuple([d for d in self.model.layers[0].output.shape[1:]])
         self.use_certainty = isinstance(self.model.output, list)
         self.evaluation_techniques = get_predictions_with_certainty() if self.use_certainty else  get_general_predictions()
-
 
     def _evaluate(self, predicts, actuals, base_path, title):
         confusion_matrix = np.zeros((len(CLASSES), len(CLASSES)))
@@ -68,6 +50,8 @@ class ModelTest:
         frames_correct = 0
         frames_wrong = 0
         actuals = []
+        track_predicts = []
+        track_certainties = [] if self.use_certainty else None
         for track in tracks:
             tag = TAG_CLASS_MAP[track.tag]
             actual = class_to_index[tag]
@@ -75,9 +59,11 @@ class ModelTest:
             samples = prep_track(track, self.sample_dims)
             if self.use_certainty:
                 predicts, certainties = self.model.predict(samples)
+                track_certainties.append(certainties)
             else:
                 predicts = self.model.predict(samples)
                 certainties = None
+            track_predicts.append(predicts)
             for technique in self.evaluation_techniques:
                 technique.evaluate(predicts, certainties, track)
             frame_maxes = np.argmax(predicts, axis=1)
@@ -101,3 +87,4 @@ class ModelTest:
         if show_cms:
             for technique in self.evaluation_techniques:
                 self._evaluate(technique.accumulated_results, actuals, self.weights_path, technique.description.lower())
+        return track_predicts, track_certainties

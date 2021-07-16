@@ -3,6 +3,8 @@ import cv2
 import librosa
 import numpy as np
 
+from support.data_model import CLASSES
+
 FRAME_DIMS = [120, 160]
 MIN_LEFT_COLUMN = 1
 MIN_TOP_ROW = 1

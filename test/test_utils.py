@@ -1,5 +1,22 @@
+import os
 
 import numpy as np
+import tensorflow as tf
+
+from model.f1_metric import F1ScoreMetric
+from model.model_certainty import ModelWithCertainty
+from support.data_model import TAG_CLASS_MAP
+
+
+def flatten_tag_tracks(tag_tracks):
+    test_tracks = []
+    for tag in tag_tracks.keys():
+        if tag in TAG_CLASS_MAP:
+            tracks = tag_tracks[tag]
+            test_tracks = test_tracks + tracks
+        else:
+            print(f'skipping {len(tag_tracks[tag])} tracks with unsupported tag {tag}')
+    return test_tracks
 
 
 def load_tracks(tracks, data_path):
@@ -32,3 +49,28 @@ def prep_track(track, input_shape):
         else:
             frame_samples.append(np.repeat(adjust[..., np.newaxis], input_shape[2], -1))
     return np.array(frame_samples)
+
+
+def convert_remote_path(path):
+    if path.endswith('.index'):
+        path = path[:-6]
+    if path.startswith('fish://dennis@125.236.230.94:2040') or path.startswith('sftp://dennis@125.236.230.94:2040'):
+        path = path[33:]
+    return path
+
+
+def load_model(weights_path):
+    directory_path, _ = os.path.split(weights_path)
+    if os.path.isdir(weights_path):
+        # need compile=False to avoid error for custom object without serialize/deserialize
+        model = tf.keras.models.load_model(weights_path, custom_objects={'f1score': F1ScoreMetric}, compile=False)
+        model.compile()
+        print(f'Loaded and compiled model from {weights_path}')
+    else:
+        model_path = f'{directory_path}/model.json'
+        with open(model_path, 'r') as f:
+            model_config = f.read()
+        model = tf.keras.models.model_from_json(model_config, custom_objects={'ModelWithCertainty': ModelWithCertainty})
+        model.compile()
+        model.load_weights(weights_path)
+    return model
