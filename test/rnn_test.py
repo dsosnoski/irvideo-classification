@@ -1,4 +1,4 @@
-
+import json
 import os
 import sys
 
@@ -8,8 +8,8 @@ import pandas as pd
 import pickle
 
 from model.training_utils import load_raw_tracks, tracks_by_tag
-from support.data_model import CLASSES
-from test.test_utils import load_tracks, convert_remote_path, flatten_tag_tracks
+from support.data_model import CLASSES, TAG_INDEXES
+from test.test_utils import load_tracks, convert_remote_path, flatten_tag_tracks, load_model
 from test.model_test import ModelTest
 
 
@@ -25,7 +25,10 @@ def main():
     os.environ['CUDA_VISIBLE_DEVICES'] = ''
     argv = sys.argv
     infos_path = argv[1]
-    arg_offset = 2
+    with open(argv[2]) as f:
+        training_config = json.load(f)
+    predicts_path = argv[3]
+    arg_offset = 4
     save_predicts = False
     start_date = None
     while arg_offset < len(argv):
@@ -38,13 +41,20 @@ def main():
         else:
             break
     test_name = os.path.split(infos_path)[1].split('_')[0]
-    tracks = load_raw_tracks(infos_path)
+    with open(predicts_path, 'rb') as f:
+        full_data = pickle.load(f)
+    track_data = {(t.clip_key, t.track_key): t.data for t in full_data}
+    test_tracks = load_raw_tracks(infos_path)
     if start_date is not None:
-        tracks = [t for t in tracks if t.start_time >= start_date]
+        test_tracks = [t for t in test_tracks if t.start_time >= start_date]
         test_name += '_after_' + start_date.isoformat(timespec='minutes')
-    tag_tracks = tracks_by_tag(tracks)
+    input_values = training_config['input_values']
+    input_scales = training_config['input_scales']
+    for track in test_tracks:
+        track.data = build_sample_data(track, track_data[(track.clip_key, track.track_key)], input_values, **input_scales)
+    actuals = [TAG_INDEXES[t.tag] for t in test_tracks]
 
-    text = f'\nTesting with {all_frame_counts(tag_tracks)} frames'
+    text = f'\nTesting with {len(track)} tracks'
     if start_date is not None:
         text += ' from ' + start_date.isoformat()
     print(text + '\n')
@@ -52,13 +62,14 @@ def main():
         print(f'{key:12}  {frame_count(tag_tracks[key]):>7}')
     print()
 
-    test_tracks = flatten_tag_tracks(tag_tracks)
-    frames_path = infos_path.replace('infos.pk', 'frames.npy')
-    load_tracks(test_tracks, frames_path)
-    print(f'loaded {len(test_tracks)} tracks with {np.sum([t.frame_count for t in test_tracks])} frames')
     for weights_path in argv[arg_offset:]:
         weights_path = convert_remote_path(weights_path)
-        model_test = ModelTest(weights_path, test_name)
+        model = load_model(weights_path)
+
+        for track in test_tracks:
+            predicts = model.predict(track.data)
+            class_index = np.argmax(predicts)
+
         track_predicts, frame_predicts = model_test.test(test_tracks, True)
         if save_predicts:
             frame_data = {

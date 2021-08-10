@@ -1,16 +1,19 @@
 
 import sys
+import time
 import traceback
 
 import cv2
 import h5py
 import matplotlib
 import matplotlib.cm
+import matplotlib.pyplot as plt
 import numpy as np
 from PySide2.QtCore import Slot
 from PySide2.QtGui import QPixmap, QImage, qRgb
 from PySide2.QtWidgets import QApplication, QComboBox, QHBoxLayout, QMainWindow, QPushButton, QVBoxLayout, QWidget, \
-    QLabel, QStatusBar
+    QLabel, QStatusBar, QScrollArea
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from preprocess.image_sizing import IMAGE_DIMENSION
 from support.track_utils import extract_hdf5_frames, convert_frames, clip_and_scale, extract_hdf5_crops, FRAME_DIMS, \
@@ -21,6 +24,7 @@ matplotlib.use('Qt5Agg')
 
 DATASET_PATH = '/home/dennis/projects/irvideos/working-data/problem-clips.hdf5'
 CLIP_DIMS = [IMAGE_DIMENSION, IMAGE_DIMENSION]
+FIGURE_DPI = 100.0
 
 
 class ViewTrack:
@@ -150,9 +154,10 @@ class ViewerWindow(QMainWindow):
         full_frame_layout.addStretch()
         self.frame_display_dims = tuple([d * 2 for d in reversed(frame_dims)])
         w, h = self.frame_display_dims
-        self.cframe_label = self._add_label(h, w, full_frame_layout)
-        self.dframe_label = self._add_label(h, w, full_frame_layout)
-        self.bframe_label = self._add_label(h, w, full_frame_layout)
+        self.figure_index = 0
+        self.cframe_figure = self._add_figure(h, w, full_frame_layout)
+        self.dframe_figure = self._add_figure(h, w, full_frame_layout)
+        self.bframe_figure = self._add_figure(h, w, full_frame_layout)
         full_frame_layout.addStretch()
         main_layout.addLayout(full_frame_layout)
         clips_layout = QHBoxLayout()
@@ -166,6 +171,13 @@ class ViewerWindow(QMainWindow):
         clips_layout.addStretch()
         self.frame_label = QLabel()
         main_layout.addWidget(self.frame_label)
+        self.thumbnails_layout = QHBoxLayout()
+        self.image_labels = []
+        container_widget = QWidget()
+        container_widget.setLayout(self.thumbnails_layout)
+        scroll_area = QScrollArea()
+        scroll_area.setWidget(container_widget)
+        main_layout.addWidget(scroll_area)
         display_controls_layout = QHBoxLayout()
         main_layout.addLayout(display_controls_layout)
         self.last_view_button = self._add_button('<<', 120, display_controls_layout)
@@ -173,6 +185,10 @@ class ViewerWindow(QMainWindow):
         self.track_combo_box = self._add_combo_box([], 120, display_controls_layout)
         self.last_frame_button = self._add_button('<', 120, display_controls_layout)
         self.last_frame_button.clicked.connect(self._last_frame_button)
+        self.play_button = self._add_button('Play', 120, display_controls_layout)
+        self.play_button.clicked.connect(self._play_button)
+        self.play_button.setAutoRepeat(True)
+        self.play_button.setAutoRepeatInterval(1000)
         self.next_frame_button = self._add_button('>', 120, display_controls_layout)
         self.next_frame_button.clicked.connect(self._next_frame_button)
         self.next_view_button = self._add_button('>>', 120, display_controls_layout)
@@ -199,6 +215,10 @@ class ViewerWindow(QMainWindow):
     @Slot()
     def _last_frame_button(self):
         self.set_frame(self.view_track.last)
+
+    @Slot()
+    def _play_button(self):
+        self.set_frame(self.view_track.next)
 
     @Slot()
     def _track_combo(self):
@@ -230,6 +250,15 @@ class ViewerWindow(QMainWindow):
         layout.addWidget(label)
         return label
 
+    def _add_figure(self, h, w, layout):
+        layout.addSpacing(40)
+        self.figure_index += 1
+        tight = { 'pad': .0 }
+        figure = plt.figure(self.figure_index, figsize=(w/FIGURE_DPI, h/FIGURE_DPI), frameon=False, tight_layout=tight)
+        canvas = FigureCanvas(figure)
+        layout.addWidget(canvas)
+        return (figure.add_subplot(), canvas)
+
     def _set_clip_track_label(self):
         clip = self.view_clip
         location = clip.location if clip.location is not None else 'unknown location'
@@ -257,8 +286,11 @@ class ViewerWindow(QMainWindow):
         self.set_frame(view_track.current_data)
         self.status_bar.showMessage(f'Set track {view_track.track_id}', 2000)
         self._set_clip_track_label()
+        #self.thumbnails_layout = QHBoxLayout()
+        #self.image_labels = []
 
     def _draw_to_label(self, data, dims, label):
+        start = time.process_time()
         data = cv2.resize(data, dims, interpolation=cv2.INTER_CUBIC)
         h, w = data.shape
         image = QImage(w, h, QImage.Format_RGB32)
@@ -272,6 +304,7 @@ class ViewerWindow(QMainWindow):
                 image.setPixel(cnum, rnum, qRgb(values[0], values[1], values[2]))
         label.setPixmap(QPixmap.fromImage(image))
         label.update()
+        print(f'drawing label took {time.process_time() - start:.4f} seconds')
 
     def set_frame(self, framefn):
         cframe, dframe, rcrop, acrop, aframe, bounds, amass = framefn()
@@ -283,11 +316,16 @@ class ViewerWindow(QMainWindow):
         self.frame_label.setText(f'Frame {index} : mass {track.adjust_masses[index]} pixel count {pixel_count} raw bounds {raw_bounds} dimension {bound_dims}')
         self.last_frame_button.setEnabled(self.view_track.has_last())
         self.next_frame_button.setEnabled(self.view_track.has_next())
-        for frame, label in [(cframe, self.cframe_label), (dframe, self.dframe_label), (self.view_track.background, self.bframe_label)]:
+        for frame, (axes, canvas) in [(cframe, self.cframe_figure), (dframe, self.dframe_figure), (self.view_track.background, self.bframe_figure)]:
             #print(f'drawing image of size {frame.shape} from track - min {frame.min()}, max {frame.max()}')
             frame = clip_and_scale(frame)
             #print(f'after clipping and scaling min {frame.min()}, max {frame.max()}')
-            self._draw_to_label(frame, self.frame_display_dims, label)
+            #self._draw_to_label(frame, self.frame_display_dims, label)
+            start = time.process_time()
+            axes.axis('off')
+            axes.imshow(frame, cmap='magma', origin='upper', aspect='auto', interpolation='hamming')
+            canvas.draw()
+            print(f'drawing figure took {time.process_time() - start:.4f} seconds')
         rcrop = clip_and_scale(rcrop)
         display_dims = tuple([d * 5 for d in reversed(rcrop.shape)])
         self.rcrop_label.setFixedSize(display_dims[0], display_dims[1])

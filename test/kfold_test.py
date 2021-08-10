@@ -72,12 +72,11 @@ def main():
         frames_correct += fold_correct
         frames_wrong += fold_wrong
     print(f'Across all folds {fold_correct} predicted correctly ({fold_correct/total_frames:.4f}), {fold_wrong} predicted incorrectly ({fold_wrong/total_frames:.4f})')
-    with open(f'{fold_root}/fold_predicts.npy', 'wb') as f:
-        np.save(f, np.array(track_predicts))
     for track in track_infos:
         track.data = None
-    with open(f'{fold_root}/fold_tracks.pk', 'wb') as f:
+    with open(f'{fold_root}/fold_results.pk', 'wb') as f:
         pickle.dump(track_infos, f)
+        pickle.dump(track_predicts, f)
 
 
 if __name__ == '__main__':

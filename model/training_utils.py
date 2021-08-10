@@ -30,6 +30,13 @@ def tracks_by_tag(tracks):
     return tag_tracks
 
 
+def flatten_tag_tracks(tag_tracks):
+    flat_tracks = []
+    for tracks in tag_tracks.values():
+        flat_tracks += tracks
+    return flat_tracks
+
+
 def print_tag_track_info(infos):
     for k in infos:
         tracks = infos[k]
@@ -58,19 +65,17 @@ def split_training_validation(tag_tracks, validate_frame_counts):
     return train_tracks, validate_tracks
 
 
-def first_time_model(model, save_directory, training_config, model_config):
+def first_time_model(model, training_config_text, model_config_text, save_directory):
     print(model.summary())
     with open(f'{save_directory}/model.txt', 'w') as f:
 
         def summary_print(s):
             print(s, file=f)
 
-        f.write('Training configuration:\n')
-        f.write(json.dumps(training_config, ensure_ascii=False))
-        f.write('\nModel configuration:\n')
-        f.write(json.dumps(model_config, ensure_ascii=False))
-        f.write('\n')
+        f.write('\nTraining configuration:\n' + training_config_text + '\n')
+        f.write('\nModel configuration:\n' + model_config_text + '\n')
         print(model.summary(print_fn=summary_print))
+        tf.keras.utils.plot_model(model, to_file=f'{save_directory}/model.png', show_shapes=True)
 
 
 def frame_count(tracks):
@@ -87,6 +92,12 @@ def print_track_information(training_tracks, validation_tracks):
     print('               Train  Validate')
     for key in CLASSES:
         print(f'{key:12}  {frame_count(training_tracks[key]):>7} {frame_count(validation_tracks[key]):>7}')
+
+
+def dense_norm_relu(n, x):
+    x = tf.keras.layers.Dense(n, kernel_initializer='he_normal')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    return tf.keras.layers.Activation("relu")(x)
 
 
 def compute_scores(tp, fp, fn):
@@ -130,6 +141,8 @@ def draw_figures(history, plots, save_directory):
             value = 'val_' + value
             plt.plot(history.history[value])
             legends.append('Validation ' + legend)
+        plt.xlim(left=1)
+        plt.ylim(0.0,1.0)
         plt.ylabel(plot['y-label'])
         plt.xlabel('Epoch')
         plt.legend(legends, loc=plot['caption-loc'], framealpha=.5)

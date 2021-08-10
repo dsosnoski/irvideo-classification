@@ -1,0 +1,33 @@
+{
+  "model_name": "dense256-gru256-512-dense512",
+  "flows": [
+    {
+      "inputs": [0, 1],
+      "layers": [
+        { "type": "dense", "count": 256 },
+        { "type": "gru", "count": 256, "return_sequences": 1 },
+        { "type": "gru", "count": 512 , "batch_norm": 1 }
+      ]
+    },
+    {
+      "inputs": [1, 2],
+      "layers": [
+        { "type": "dense", "count": 128 },
+        { "type": "gru", "count": 128, "return_sequences": 1 },
+        { "type": "gru", "count": 256 , "batch_norm": 1 }
+      ]
+    }
+  ],
+  "layers": [
+    { "type": "dense", "count": 512, "dropout_rate": 0.2 }
+  ],
+  "classifier_dropout": 0.2,
+  "classifier_activation": "sigmoid",
+  "optimizer": { "class_name": "Adam", "config": { "learning_rate": 0.005, "epsilon": 0.002 } },
+  "loss": { "class_name": "BinaryCrossentropy", "config": { "name": "crossentropy" } },
+  "metrics": [
+    {"class_name": "CategoricalAccuracy", "config": { "name": "categorical_accuracy" }},
+    {"class_name": "BinaryCrossentropy", "config": { "name": "binary_crossentropy" }},
+    {"class_name": "F1ScoreMetric", "config": {"name": "f1score", "dtype": "float32"}}
+  ]
+}

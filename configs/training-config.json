@@ -2,6 +2,7 @@
   "batch_size": 512,
   "input_dims": [32, 32, 1],
   "epochs_count": 500,
+  "cutoff_time": "2021-06-05T02:33+12:00",
   "validate_frame_counts": {
     "bird": 22376,
     "cat": 28162,
@@ -20,7 +21,7 @@
   "noise_scale": 8,
   "rotation_limit": 27,
   "use_flip": true,
-  "data_path": "/data/dennis/irvideo/redata",
+  "data_path": "/data/dennis/irvideo/new-data",
   "base_save_path": "/data/dennis/irvideo/models",
   "callbacks": [
     {

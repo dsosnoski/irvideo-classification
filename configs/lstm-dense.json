@@ -1,12 +1,9 @@
 {
-  "model_name": "resnet34scaled",
-  "initial_conv": { "filters": 64, "kernel_size": [7,7], "strides": [2,2] },
-  "initial_pool": {},
-  "feature_extraction": {
-    "type": "resnet",
-    "params": { "block_fn": "basic", "repetitions": [3, 4, 6, 3], "filter_scaler":  1.5 }
-  },
-  "final_pool": { "type":  "max", "params": {} },
+  "model_name": "lstm2-dense",
+  "rnn_type": "lstm",
+  "rnn_counts": [512, 256],
+  "dense_counts": [256],
+  "dropout_rate": 0.2,
   "classifier_activation": "sigmoid",
   "optimizer": { "class_name": "Adam", "config": { "learning_rate": 0.005, "epsilon": 0.002 } },
   "loss": { "class_name": "BinaryCrossentropy", "config": { "name": "crossentropy" } },

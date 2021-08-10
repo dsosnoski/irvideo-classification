@@ -13,14 +13,14 @@ def track_id_set(tag_tracks):
 
 
 tracks = []
-with open('/data/dennis/irvideo/redata//track_split.pk', 'rb') as f:
+with open('/data/dennis/irvideo/new-data/track_split.pk', 'rb') as f:
     training_tracks = pickle.load(f)
     validation_tracks = pickle.load(f)
 print('\nOriginal training data:')
 print_tag_track_info(training_tracks)
 print('\nOriginal validation data:')
 print_tag_track_info(validation_tracks)
-raw_tracks = load_raw_tracks('/data/dennis/irvideo/data/train_infos.pk')
+raw_tracks = load_raw_tracks('/data/dennis/irvideo/new-data/train_infos.pk')
 print(f'\nLoaded {len(raw_tracks)} tracks of new data')
 training_track_ids = track_id_set(training_tracks)
 print(len(training_track_ids))

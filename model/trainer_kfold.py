@@ -12,7 +12,7 @@ from model.frame_sequence import FrameSequence
 from model.model_builder import ModelBuilder
 from model.training_utils import load_raw_tracks, tracks_by_tag, first_time_model, build_callback, \
     print_track_information, draw_figures
-from support.data_model import CLASSES
+from support.data_model import CLASSES, TAG_HOTS
 
 
 def split_training_validation(tag_tracks, validate_frame_counts):
@@ -112,13 +112,6 @@ def main():
     rotation_limit = training_config.get('rotation_limit')
     use_flip = training_config.get('use_flip', False)
     input_dims = tuple(training_config['input_dims'])
-    tag_hots = {}
-    tag_indexes = {}
-    for index, tag in enumerate(CLASSES):
-        one_hot = np.zeros(len(CLASSES))
-        one_hot[index] = 1
-        tag_hots[tag] = one_hot
-        tag_indexes[tag] = index
     model = ModelBuilder.build_model(input_dims, len(CLASSES), None, **model_config)
     first_time_model(model, save_directory, training_config, model_config)
     model_json = model.to_json()
@@ -132,10 +125,10 @@ def main():
             training_tracks = merge_tag_tracks([kfold_tag_tracks[i] for i in range(fold_count) if i != fold_num])
             validation_tracks = kfold_tag_tracks[fold_num]
             print_track_information(training_tracks, validation_tracks)
-            train_sequence = FrameSequence.build_training_sequence(training_tracks, data_path, batch_size, tag_hots, input_dims,
+            train_sequence = FrameSequence.build_training_sequence(training_tracks, data_path, batch_size, TAG_HOTS, input_dims,
                                                                    frame_counts, replace_fraction_per_epoch, noise_scale,
                                                                    rotation_limit, use_flip)
-            validate_sequence = FrameSequence.build_validation_sequence(validation_tracks, data_path, batch_size, tag_hots, input_dims)
+            validate_sequence = FrameSequence.build_validation_sequence(validation_tracks, data_path, batch_size, TAG_HOTS, input_dims)
             certainty_loss_weight = training_config.get('certainty_loss_weight')
             model = ModelBuilder.build_model(input_dims, len(CLASSES), certainty_loss_weight, **model_config)
             callbacks = [build_callback(cfg, pass_directory) for cfg in training_config['callbacks']]

@@ -1,41 +1,14 @@
 {
   "batch_size": 512,
-  "input_dims": [32, 32, 3],
+  "input_dims": [16, 18],
   "epochs_count": 500,
-  "validate_frame_counts": {
-    "bird": 22376,
-    "cat": 28162,
-    "hedgehog": 42518,
-    "human": 7396,
-    "leporidae": 17305,
-    "mustelid": 10685,
-    "possum": 44951,
-    "rodent": 82310,
-    "unclassified": 100603,
-    "vehicle": 2382,
-    "wallaby": 15956
-  },
-  "sample_weights": {
-    "bird": 40000,
-    "cat": 25000,
-    "hedgehog": 65000,
-    "human": 7000,
-    "leporidae": 20000,
-    "mustelid": 11000,
-    "possum": 88000,
-    "rodent": 100000,
-    "unclassified": 80000,
-    "vehicle": 2000,
-    "wallaby": 30000
-  },
-  "frame_count_multiple": 3,
-  "max_frame_load_count": 300000,
-  "replace_fraction_per_epoch": 0.2,
-  "noise_scale": 8,
-  "rotation_limit": 30,
-  "use_flip": true,
-  "data_path": "/data/dennis/irvideo/new-data",
+  "model_name_suffix": "rnn",
+  "noise_scale": 0.05,
+  "classification_noise": 0.3,
   "base_save_path": "/data/dennis/irvideo/models",
+  "pixel_count_scale": 400,
+  "dimension_scale": 32,
+  "movement_scale": 10,
   "callbacks": [
     {
       "name": "checkpoint_callback",
@@ -47,9 +20,9 @@
     },
     {
       "name": "checkpoint_callback",
-      "filepath": "model-{epoch:02d}-f1{val_f1score:.4f}-acc{val_categorical_accuracy:.4f}",
-      "monitor": "val_f1score",
-      "mode": "max",
+      "filepath": "model-{epoch:02d}-acc{val_categorical_accuracy:.4f}-loss{val_loss:.4f}",
+      "monitor": "val_loss",
+      "mode": "min",
       "save_best_only": true,
       "save_weights_only": false
     },
@@ -58,15 +31,15 @@
       "monitor": "val_categorical_accuracy",
       "mode": "max",
       "factor": 0.65,
-      "patience": 6,
-      "min_lr": 0.00001,
+      "patience": 15,
+      "min_lr": 0.00002,
       "verbose": 1
     },
     {
       "name": "stopping_callback",
       "monitor": "val_categorical_accuracy",
       "mode": "max",
-      "patience": 26
+      "patience": 50
     }
   ],
   "plots": [

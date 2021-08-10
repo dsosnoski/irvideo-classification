@@ -1,13 +1,8 @@
 
-import os
-
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sn
-import tensorflow as tf
 
-from model.f1_metric import F1ScoreMetric
-from model.model_certainty import ModelWithCertainty
 from support.data_model import CLASSES, TAG_CLASS_MAP
 from test.prediction_variations import get_general_predictions, get_predictions_with_certainty
 from test.test_utils import prep_track, load_model
@@ -15,15 +10,16 @@ from test.test_utils import prep_track, load_model
 
 class ModelTest:
 
-    def __init__(self, weights_path):
+    def __init__(self, weights_path, test_name):
         self.weights_path = weights_path
+        self.test_name = test_name
         self.model = load_model(weights_path)
         self.sample_dims = tuple([d for d in self.model.layers[0].output.shape[1:]])
         self.use_certainty = isinstance(self.model.output, list)
         self.evaluation_techniques = get_predictions_with_certainty() if self.use_certainty else  get_general_predictions()
 
     def _evaluate(self, predicts, actuals, base_path, title):
-        confusion_matrix = np.zeros((len(CLASSES), len(CLASSES)))
+        confusion_matrix = np.zeros((len(CLASSES), len(CLASSES)), dtype=np.int32)
         for predict, actual in zip(predicts, actuals):
             confusion_matrix[actual, predict] += 1
         normalized_matrix = (confusion_matrix.T / confusion_matrix.sum(axis=1)).T
@@ -39,8 +35,10 @@ class ModelTest:
         sn.heatmap(display_matrix, annot=True, fmt='.2f', cmap='Blues', xticklabels=CLASSES, yticklabels=CLASSES + ['precision'])
         plt.ylabel('Actual')
         plt.xlabel('Predicted')
+        plt.xlim(left=1)
+        plt.ylim(0.0,1.0)
         plt.suptitle(f'{title} \n overall accuracy: {num_correct/num_total:.4f}, mean recall: {np.diag(normalized_matrix).sum()/len(CLASSES):.4f}, mean precision: {np.sum(precision_row)/len(CLASSES):.4f}')
-        plt.savefig(f'{base_path}-{title.replace(" ", "_")}test-results.png')
+        plt.savefig(f'{base_path}-{title.replace(" ", "_")}{self.test_name}-results.png')
         plt.close()
 
     def test(self, tracks, show_cms=False):
@@ -50,8 +48,7 @@ class ModelTest:
         frames_correct = 0
         frames_wrong = 0
         actuals = []
-        track_predicts = []
-        track_certainties = [] if self.use_certainty else None
+        frame_predicts = []
         for track in tracks:
             tag = TAG_CLASS_MAP[track.tag]
             actual = class_to_index[tag]
@@ -59,11 +56,10 @@ class ModelTest:
             samples = prep_track(track, self.sample_dims)
             if self.use_certainty:
                 predicts, certainties = self.model.predict(samples)
-                track_certainties.append(certainties)
             else:
                 predicts = self.model.predict(samples)
                 certainties = None
-            track_predicts.append(predicts)
+            frame_predicts.append(predicts)
             for technique in self.evaluation_techniques:
                 technique.evaluate(predicts, certainties, track)
             frame_maxes = np.argmax(predicts, axis=1)
@@ -78,7 +74,7 @@ class ModelTest:
                 #print(f'Track {track.track_key} prediction variations all correct')
                 pass
             else:
-                text = f'{track.clip_key}-{track.track_key} prediction variations' + (' partial correct' if any(matches) else ' all wrong') + ': '
+                text = f'{track.clip_key}-{track.track_key} {track.tag} prediction variations' + (' partial correct' if any(matches) else ' all wrong') + ': '
                 for technique in self.evaluation_techniques:
                     text += technique.description + ' ' + CLASSES[technique.accumulated_results[-1]] + ', '
                 print(text[:-2])
@@ -87,4 +83,7 @@ class ModelTest:
         if show_cms:
             for technique in self.evaluation_techniques:
                 self._evaluate(technique.accumulated_results, actuals, self.weights_path, technique.description.lower())
-        return track_predicts, track_certainties
+        track_predicts = []
+        for technique in self.evaluation_techniques:
+            track_predicts.append(technique.accumulated_results)
+        return track_predicts, frame_predicts

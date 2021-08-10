@@ -1,18 +1,13 @@
 import os
-import traceback
+import sys
 
 import h5py
-import numpy as np
-import pickle
-import sys
 from dateutil.parser import parse as parse_date
+
 
 # import matplotlib
 # import matplotlib.pyplot as plt
 # matplotlib.use('TkAgg')
-from preprocess.image_sizing import IMAGE_DIMENSION, IMAGE_RESIZE_RATIOS
-from support.data_model import Track
-from support.track_utils import convert_frames, extract_hdf5_frames, extract_hdf5_crops, prune_frames, stepped_resizer
 
 # DATASET_PATH = '/data/cacophony/ai-dataset/dataset.hdf5'
 # OUTPUT_DIRECTORY = '/data/dennis/irvideo/new-data'

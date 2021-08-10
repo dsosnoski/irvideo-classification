@@ -6,6 +6,7 @@ import tensorflow as tf
 from model.f1_metric import F1ScoreMetric
 from model.resnet import _conv_bn_relu, _build_resnet_core, _fix_dims
 from model.model_certainty import ModelWithCertainty
+from model.training_utils import dense_norm_relu
 
 
 def _build_pool(input, **parms):
@@ -21,12 +22,6 @@ def _build_pool(input, **parms):
         return tf.keras.layers.AveragePooling2D(**poolparms)(input)
     else:
         raise ValueError(f'Unknown pool type {pool_type}')
-
-
-def _dense_norm_relu(n, x):
-    x = tf.keras.layers.Dense(n, kernel_initializer='he_normal')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    return tf.keras.layers.Activation("relu")(x)
 
 
 def _build_band(input, **parms):
@@ -128,7 +123,7 @@ class ModelBuilder(object):
         if 'dense-classifier' in parms:
             for n in parms['dense-classifier']:
                 x = tf.keras.layers.Dropout(rate=.5)(x)
-                x = _dense_norm_relu(n, x)
+                x = dense_norm_relu(n, x)
         activation = parms["classifier_activation"]
         class_dense = tf.keras.layers.Dense(units=num_classes, kernel_initializer='he_normal', name='class-dense')(x)
         class_out = tf.keras.layers.Activation(activation, name='class')(class_dense)
@@ -138,7 +133,7 @@ class ModelBuilder(object):
         if certainty_loss_weight is not None:
             interx1 = tf.keras.layers.Flatten()(intermediate_outputs[-1])
             interx1 = tf.keras.layers.Dropout(rate=.5)(interx1)
-            interx1 = _dense_norm_relu(16, interx1)
+            interx1 = dense_norm_relu(16, interx1)
             interx2 = tf.keras.layers.Dropout(rate=.5)(class_dense)
             interx2 = tf.keras.layers.Activation('relu')(interx2)
             interx = tf.keras.layers.Concatenate()([interx1, interx2])

@@ -1,7 +1,7 @@
 
 import datetime
+import dateutil.parser as dtparser
 import json
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pickle
@@ -13,7 +13,7 @@ from model.frame_sequence import FrameSequence
 from model.model_builder import ModelBuilder
 from model.training_utils import split_training_validation, load_raw_tracks, tracks_by_tag, print_tag_track_info, \
     first_time_model, build_callback, draw_figures, print_track_information
-from support.data_model import CLASSES
+from support.data_model import CLASSES, TAG_HOTS
 
 
 def get_training_validation_split(data_directory, save_directory, training_config):
@@ -24,7 +24,10 @@ def get_training_validation_split(data_directory, save_directory, training_confi
             validation_tracks = pickle.load(f)
     else:
         tracks = load_raw_tracks(f'{data_directory}/train_infos.pk')
+        cutoff_time = dtparser.parse(training_config['cutoff_time'])
+        tracks = [t for t in tracks if t.start_time < cutoff_time]
         tag_tracks = tracks_by_tag(tracks)
+        print(f'Using training data prior to {cutoff_time.isoformat(timespec="minutes")}')
         print_tag_track_info(tag_tracks)
         validate_frame_counts = training_config.get('validate_frame_counts')
         if validate_frame_counts is None:
@@ -43,9 +46,11 @@ def get_training_validation_split(data_directory, save_directory, training_confi
 def main():
     argv = sys.argv
     with open(argv[1]) as f:
-        training_config = json.load(f)
+        training_config_text = f.read()
+    training_config = json.loads(training_config_text)
     with open(argv[2]) as f:
-        model_config = json.load(f)
+        model_config_text = f.read()
+    model_config = json.loads(model_config_text)
 
     os.environ['CUDA_VISIBLE_DEVICES'] = argv[3] if len(argv) > 3 else ''
 
@@ -82,17 +87,10 @@ def main():
     rotation_limit = training_config.get('rotation_limit')
     use_flip = training_config.get('use_flip', False)
     input_dims = tuple(training_config['input_dims'])
-    tag_hots = {}
-    tag_indexes = {}
-    for index, tag in enumerate(CLASSES):
-        one_hot = np.zeros(len(CLASSES))
-        one_hot[index] = 1
-        tag_hots[tag] = one_hot
-        tag_indexes[tag] = index
-    train_sequence = FrameSequence.build_training_sequence(training_tracks, data_path, batch_size, tag_hots, input_dims,
+    train_sequence = FrameSequence.build_training_sequence(training_tracks, data_path, batch_size, TAG_HOTS, input_dims,
                                                            frame_counts, replace_fraction_per_epoch, noise_scale,
                                                            rotation_limit, use_flip)
-    validate_sequence = FrameSequence.build_validation_sequence(validation_tracks, data_path, batch_size, tag_hots, input_dims)
+    validate_sequence = FrameSequence.build_validation_sequence(validation_tracks, data_path, batch_size, TAG_HOTS, input_dims)
     if len(argv) > 4:
         model_argument = argv[4]
         if model_argument.endswith('.sav'):
@@ -112,7 +110,7 @@ def main():
     else:
         certainty_loss_weight = training_config.get('certainty_loss_weight')
         model = ModelBuilder.build_model(input_dims, len(CLASSES), certainty_loss_weight, **model_config)
-        first_time_model(model, save_directory, training_config, model_config)
+        first_time_model(model, training_config_text, model_config_text, save_directory)
         model_json = model.to_json()
         with open(f'{save_directory}/model.json', 'w') as f:
             f.write(model_json)

@@ -19,8 +19,8 @@ from support.track_utils import convert_frames, extract_hdf5_frames, extract_hdf
 # DATASET_PATH = '/mnt/old/irvideos/dataset.hdf5'
 # OUTPUT_DIRECTORY = '/mnt/old/irvideos'
 
-DATA_FILE_NAMES = ['test_frames.npy', 'train_frames.npy', 'newer_frames.npy']
-METADATA_NAMES = ['test_infos.pk', 'train_infos.pk', 'newer_infos.pk']
+DATA_FILE_NAMES = ['test_frames.npy', 'train_frames.npy']
+METADATA_NAMES = ['test_infos.pk', 'train_infos.pk']
 
 
 def open_files(root_path, names):
@@ -67,11 +67,9 @@ def main():
     frame_count = 0
     test_count = 0
     train_count = 0
-    newer_count = 0
     discard_count = 0
-    cutoff_time = parse_date('2021-03-29T08:07:54.240643+13:00')
-    ftest_data, ftrain_data, fnewer_data = open_files(output_directory, DATA_FILE_NAMES)
-    ftest_meta, ftrain_meta, fnewer_meta = open_files(output_directory, METADATA_NAMES)
+    ftest_data, ftrain_data = open_files(output_directory, DATA_FILE_NAMES)
+    ftest_meta, ftrain_meta = open_files(output_directory, METADATA_NAMES)
     ratiofn = smooth_resizer(IMAGE_DIMENSION)
     for clip_key in clips_hdf5:
         clip_hdf5 = clips_hdf5[clip_key]
@@ -99,43 +97,17 @@ def main():
                         np.save(ftest_data, aframes)
                         test_count += 1
                         pickle.dump(track, ftest_meta)
-                    elif start_time < cutoff_time:
+                    else:
                         offset = ftrain_data.tell()
                         track = Track(tag, clip_key, track_key, start_time, device_name, location, masses, pixels, bounds, obounds, ratios, offset)
                         np.save(ftrain_data, aframes)
                         train_count += 1
                         pickle.dump(track, ftrain_meta)
-                    else:
-                        offset = fnewer_data.tell()
-                        track = Track(tag, clip_key, track_key, start_time, device_name, location, masses, pixels, bounds, obounds, ratios, offset)
-                        np.save(fnewer_data, aframes)
-                        newer_count += 1
-                        pickle.dump(track, fnewer_meta)
                     track_count += 1
                     frame_count += len(obounds)
-                    # if tag != 'unknown' and tag != 'false-positive':
-                    #     show_index = None
-                    #     for try_index in range(len(acrops) // 4, len(acrops)*3 // 4):
-                    #         if ratios[try_index] > 1:
-                    #             show_index = try_index
-                    #             if ratios[try_index] > 1.5:
-                    #                 break
-                    #     if show_index is not None:
-                    #         plt.figure(figsize=(8,15))
-                    #         l, t, r, b = hdf5_bounds[show_index]
-                    #         plt.subplot(311)
-                    #         plt.title(f'{track_key}-{tag} original size ({b-t},{r-l}), scaling ratio {ratios[show_index]}')
-                    #         plt.imshow(acrops[show_index])
-                    #         plt.subplot(312)
-                    #         plt.imshow(aframes[show_index])
-                    #         plt.subplot(313)
-                    #         plt.imshow(crops[show_index])
-                    #         plt.savefig(f'/tmp/{track_key}-{tag}.png')
-                    #         plt.close()
-                    #         print(f'{track_key}-{tag} has ratio {ratios[show_index]}')
                     if track_count % 1000 == 0:
-                        print(f'processed {track_count} tracks with {frame_count} frames, {train_count} training tracks, {test_count} test tracks, and {newer_count} newer tracks; {discard_count} tracks discarded')
-                        ftest_data, ftrain_data, fnewer_data = save_and_reopen_files([ftest_data, ftrain_data, fnewer_data])
+                        print(f'processed {track_count} tracks with {frame_count} frames, {train_count} training tracks and  {test_count} test tracks; {discard_count} tracks discarded')
+                        ftest_data, ftrain_data = save_and_reopen_files([ftest_data, ftrain_data])
                 else:
                     discard_count += 1
                     print(f'discarding zero-length {clip_key}-{track_key} in test set {clip_key in test_clips}')
@@ -147,9 +119,9 @@ def main():
                 print(f'Exception processing {clip_key}-{track_key}: {e}')
                 traceback.print_exc()
 
-    close_files([ftest_data, ftrain_data, fnewer_data])
-    close_files([ftest_meta, ftrain_meta, fnewer_meta])
-    print(f'Completed processing of {track_count} tracks with {frame_count} frames, {train_count} training tracks, {test_count} test tracks, and {newer_count} newer tracks; {discard_count} tracks discarded')
+    close_files([ftest_data, ftrain_data])
+    close_files([ftest_meta, ftrain_meta])
+    print(f'Completed processing of {track_count} tracks with {frame_count} frames, {train_count} training tracks and {test_count} test tracks; {discard_count} tracks discarded')
     missing_clips = [k for k,v in test_clips.items() if not v]
     for clip_key in missing_clips:
         print(f'missing specified test clip {clip_key}')
